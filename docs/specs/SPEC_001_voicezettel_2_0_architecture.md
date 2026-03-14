@@ -43,9 +43,77 @@ VoiceZettel 2.0 — гибридный AI-ассистент с голосовы
 
 ## Архитектура верхнего уровня
 
-[SEE FULL CONTENT BELOW — PLACEHOLDER FOR ARCHITECTURE DIAGRAM]
-
-Полная архитектурная диаграмма включает: Next.js 15 App Router, Frontend (React 19, Three.js, Zustand), API Routes, Admin Panel, Agent Dashboard, Voice Pipeline Manager (STT/LLM/TTS Router + Voice Cloner), Memory & Context (ChromaDB, Adaptive System Prompt, Obsidian), Lapel Engine (20+ speakers), Agent System, Shelestun, Smart Home, Perfocard, Infrastructure.
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         NEXT.JS 15 (App Router)                         │
+│                                                                          │
+│  ┌─────────────┐ ┌──────────────┐ ┌───────────┐ ┌────────────────────┐  │
+│  │  Frontend   │ │  API Routes  │ │   Admin   │ │  Agent Dashboard   │  │
+│  │  React 19   │ │  /api/*      │ │   Panel   │ │  (оркестратор UI)  │  │
+│  │  Three.js   │ │  WebSocket   │ │           │ │                    │  │
+│  │  Zustand    │ │              │ │           │ │                    │  │
+│  └──────┬──────┘ └──────┬───────┘ └─────┬─────┘ └────────┬───────────┘  │
+│         │               │               │                │              │
+│  ┌──────┴───────────────┴───────────────┴────────────────┴────────────┐  │
+│  │                    Voice Pipeline Manager                          │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────────────┐ │  │
+│  │  │STT Router│  │LLM Router│  │TTS Router│  │  Voice Cloner      │ │  │
+│  │  │Deepgram  │  │Groq      │  │Cartesia  │  │  ElevenLabs/XTTS   │ │  │
+│  │  │+Whisper  │  │OpenAI    │  │ElevenLabs│  │  /RVC/OpenVoice    │ │  │
+│  │  │          │  │DeepSeek  │  │Google    │  │                    │ │  │
+│  │  │          │  │Gemini    │  │Yandex    │  │                    │ │  │
+│  │  │          │  │Ollama    │  │Qwen3-TTS │  │                    │ │  │
+│  │  │          │  │          │  │Piper     │  │                    │ │  │
+│  │  └──────────┘  └──────────┘  └──────────┘  └────────────────────┘ │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────────────────────┐  │
+│  │  Memory & Context    │  │  Lapel Engine (20+ спикеров)            │  │
+│  │  ┌────────────────┐  │  │  ┌────────────┐  ┌──────────────────┐  │  │
+│  │  │ ChromaDB       │  │  │  │ pyannote   │  │ Person Resolver  │  │  │
+│  │  │ per-user       │  │  │  │ diarize    │  │ (voice prints +  │  │  │
+│  │  │ 6 коллекций    │  │  │  │ +Deepgram  │  │  context match)  │  │  │
+│  │  ├────────────────┤  │  │  ├────────────┤  ├──────────────────┤  │  │
+│  │  │ Adaptive       │  │  │  │ 3 States   │  │ Mafia Game       │  │  │
+│  │  │ System Prompt  │  │  │  │ Controller │  │ Engine           │  │  │
+│  │  ├────────────────┤  │  │  ├────────────┤  ├──────────────────┤  │  │
+│  │  │ Obsidian       │  │  │  │ Ear Hints  │  │ Daily Digest     │  │  │
+│  │  │ REST API       │  │  │  │ (whisper)  │  │ Generator        │  │  │
+│  │  └────────────────┘  │  │  └────────────┘  └──────────────────┘  │  │
+│  └──────────────────────┘  └──────────────────────────────────────────┘  │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────────┐│
+│  │                    Agent System                                      ││
+│  │  ┌──────────────┐  ┌────────────────┐  ┌──────────────────────────┐ ││
+│  │  │ Agent CRUD   │  │  Orchestrator  │  │  Local Model Queue       │ ││
+│  │  │ (3-step flow)│  │  (маршрутизация│  │  (VRAM management,       │ ││
+│  │  │              │  │   задач)       │  │   load/unload models)    │ ││
+│  │  ├──────────────┤  ├────────────────┤  ├──────────────────────────┤ ││
+│  │  │ RAG Engine   │  │  Agent Comms   │  │  External Agents         │ ││
+│  │  │ (замена      │  │  (конференции, │  │  (Perplexity, Cursor,    │ ││
+│  │  │  NotebookLM) │  │   взаимный     │  │   Antigravity, OpenClaw) │ ││
+│  │  │              │  │   контроль)    │  │                          │ ││
+│  │  └──────────────┘  └────────────────┘  └──────────────────────────┘ ││
+│  └──────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│  ┌─────────────────┐  ┌────────────────┐  ┌────────────────────────────┐│
+│  │  Shelestun      │  │  Smart Home    │  │  Perfocard (Gamification) ││
+│  │  (фоновый       │  │  Yandex IoT    │  │  Google Sheets API        ││
+│  │   аналитик)     │  │  + Home Asst.  │  │  + авто-трекинг           ││
+│  │  Ollama node    │  │  + MQTT/Zigbee │  │                            ││
+│  └─────────────────┘  └────────────────┘  └────────────────────────────┘│
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────────┐│
+│  │  Infrastructure: Telegram Bot Admin · Token Tracker · GA4 · Metrika ││
+│  │  Nginx Reverse Proxy · Let's Encrypt · Fail2ban · Backup            ││
+│  └──────────────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────────────┘
+         │              │              │              │
+    ┌────▼────┐   ┌─────▼─────┐  ┌────▼────┐   ┌────▼──────┐
+    │ChromaDB │   │ Obsidian  │  │ SQLite  │   │ Ollama    │
+    │ Server  │   │ Local     │  │ (meta)  │   │ (models)  │
+    └─────────┘   └───────────┘  └─────────┘   └───────────┘
+```
 
 ---
 
@@ -88,6 +156,16 @@ VoiceZettel 2.0 — гибридный AI-ассистент с голосовы
 
 ### 1.1 Google OAuth
 
+```typescript
+// Файл: src/lib/auth.ts
+interface AuthConfig {
+  provider: 'google'; // только Google OAuth
+  whitelist: string[]; // белый список email (из SQLite)
+  roles: 'admin' | 'user';
+  adminEmail: 'evsinanton@gmail.com'; // единственный admin
+}
+```
+
 - NextAuth.js с провайдером Google
 - **НЕ через Google Cloud Console Audience** — белый список email хранится в SQLite
 - Таблица `users`: id, email, name, role, avatar_url, created_at, last_login
@@ -106,6 +184,31 @@ VoiceZettel 2.0 — гибридный AI-ассистент с голосовы
 - Шелестун — ТОЛЬКО для admin
 - Агенты — у каждого пользователя свои
 - Множество пользователей, но ТОЛЬКО доверенные близкие люди
+
+### 1.3 Таблицы SQLite
+
+```sql
+-- Пользователи
+CREATE TABLE users (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
+  avatar_url TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_login TEXT,
+  settings_json TEXT DEFAULT '{}'
+);
+
+-- Белый список (отдельная таблица для гибкости)
+CREATE TABLE email_whitelist (
+  email TEXT PRIMARY KEY,
+  added_by TEXT NOT NULL,
+  added_at TEXT NOT NULL DEFAULT (datetime('now')),
+  note TEXT
+);
+```
 
 ---
 
@@ -133,61 +236,205 @@ VoiceZettel 2.0 — гибридный AI-ассистент с голосовы
 
 **Переключение режимов**: горизонтальный свайп по шару (touch/mouse drag) с плавным морфингом 0.5с.
 
+### 2.2 Particle Visual System (Агент)
+
+Технологический стек:
+- **Three.js Points** с `AdditiveBlending` для рендеринга
+- **GLSL ShaderMaterial** — кастомные vertex/fragment шейдеры
+- **GPUComputationRenderer** (Three.js) — физика частиц на GPU при >3000 частиц
+- **Web Audio API AnalyserNode** — FFT данные для аудио-реактивности
+
+```typescript
+// Файл: src/components/particle-system/ParticleAvatar.ts
+interface ParticleAvatarConfig {
+  particleCount: number; // 3000 по умолчанию
+  morphTargets: {
+    sphere: Float32Array; // позиции сферы
+    face: Float32Array;   // позиции лица (из 3D скана / готовой модели)
+    cloud: Float32Array;  // рандомное облако
+    custom: Float32Array; // кастомная форма
+  };
+  visemes: Record<string, Float32Array>; // Aa, Ee, Ih, Oh, Ou → смещения частиц
+  mood: 'neutral' | 'happy' | 'sad' | 'angry' | 'thinking'; // setMood()
+}
+```
+
+**Lip-sync через visemes:**
+1. TTS провайдер возвращает timestamps visemes (ElevenLabs / Cartesia поддерживают)
+2. Если TTS не даёт visemes → LLM-предикция по тексту (simple phoneme mapper)
+3. Viseme set (TalkingHead OVR): `aa, E, I, O, U, PP, SS, TH, CH, FF, kk, nn, RR, DD, sil`
+4. Каждый viseme = вектор смещений для частиц в области рта
+5. Плавная интерполяция между visemes (lerp, ~60fps)
+
+**GLSL uniform'ы для шейдера:**
+```glsl
+uniform float uViseme_Aa;
+uniform float uViseme_Ee;
+uniform float uViseme_Ih;
+// ... все 15 visemes
+uniform float uMorphProgress; // 0=облако, 1=цель
+uniform float uAudioLevel;    // из AnalyserNode
+uniform float uAudioBass;     // низкие частоты
+uniform float uAudioTreble;   // высокие частоты
+uniform vec3 uMoodColor;      // цвет настроения
+uniform float uBreathPhase;   // idle breathing
+uniform float uBlinkPhase;    // idle blinking
+```
+
+**Idle-анимации:**
+- Breathing: sin(time * 0.5) — медленное расширение/сжатие
+- Blink: случайный интервал 3-7сек, длительность 150ms
+- Subtle sway: Perlin noise на позиции
+
+**Audio-reactive:** Web Audio API → `AnalyserNode.getByteFrequencyData()` → uniform'ы в шейдер:
+- Общий уровень → масштаб сферы
+- Басы → "пульсация" (scale)
+- Высокие → "искры" (скорость частиц)
+- Голос → морфинг рта (visemes)
+
+### 2.3 Чат-интерфейс
+
+- Взять из speaker1991/voicezettel
+- **Цветные облачка**: каждый спикер (в петлице) получает уникальный цвет
+- **Обновление имени задним числом**: когда ИИ узнаёт имя говорящего, все предыдущие сообщения "Speaker N" обновляются на реальное имя
+- Markdown рендеринг в сообщениях
+- Streaming ответов LLM (token by token)
+- Индикатор "печатает..." с анимацией частиц
+
+### 2.4 Панель настроек
+
+Порядок блоков (сверху вниз):
+1. **Виджеты** — включение/выключение компонентов
+2. **Голосовой пайплайн** — STT / LLM / TTS провайдеры
+3. **Системный промпт** — ручная настройка + history директив
+4. **Сущности** — типы заметок, toggle вкл/выкл
+
+**Голосовой пайплайн настройки:**
+- Пресеты: ⚡ Молния / ⚖️ Оптимальный / 🎭 Эмоциональный / 💻 Локальный
+- Мозги (LLM): выпадающий список с иконками провайдеров, свободный выбор приоритета
+- Озвучка (TTS): выпадающий список + кнопка превью голоса
+- Голос: Мужской / Женский / Клонированный + кнопка "Попросить голосом" (запись сэмпла)
+- **Имя ассистента**: редактируемое в любой момент — голосом, текстом или в настройках. Имя = триггер для петлицы ("Вика, подскажи...")
+- **Голос по умолчанию**: женский
+
+**ПРИНЦИП: пользователь свободно выбирает приоритеты моделей в ЛЮБОЙ конфигурации. Система не навязывает ограничения.**
+
 ---
 
 ## Модуль 3: Голосовой пайплайн
 
 ### 3.1 STT (Speech-to-Text)
 
-**Primary**: Deepgram Nova-3 (WebSocket streaming) — ~150ms, русский, diarization
+**Primary**: Deepgram Nova-3 (WebSocket streaming)
+- Русский язык
+- Diarization (speaker labels)
+- ~150ms latency
+- Endpoint: `wss://api.deepgram.com/v1/listen?model=nova-3&language=ru&diarize=true`
 
-**Fallback**: Whisper (faster-whisper, локально на GPU) — large-v3 или medium
+**Fallback**: Whisper (faster-whisper, локально на GPU)
+- Модель: large-v3 (best accuracy) или medium (faster)
+- faster-whisper с CTranslate2 → ~1.5сек на 10сек аудио на RTX 4090
 
 **Цепочка fallback**: Deepgram → Whisper (local)
 
 ### 3.2 LLM Router
 
-Доступные провайдеры:
-- Groq + Llama 4 Maverick (fast)
-- GPT-4o (smart, vision)
-- Gemini 2.5 Pro (smart)
-- DeepSeek V3 (smart, code)
-- Ollama: Qwen3-32B (smart, local)
-- Ollama: Qwen2.5-Coder-32B (code, local)
+```typescript
+// Файл: src/lib/voice-pipeline/llm-router.ts
+interface LLMProvider {
+  id: string;
+  name: string;
+  icon: string;
+  endpoint: string;
+  model: string;
+  priority: number; // пользователь устанавливает
+  maxTokens: number;
+  costPerMToken: { input: number; output: number }; // USD
+  capabilities: ('fast' | 'smart' | 'code' | 'vision' | 'local')[];
+}
 
-**Принцип**: пользователь свободно выставляет приоритеты. Fallback автоматический по приоритету.
+// Доступные провайдеры
+const PROVIDERS: LLMProvider[] = [
+  { id: 'groq-maverick', name: 'Groq + Llama 4 Maverick', capabilities: ['fast'] },
+  { id: 'openai-gpt4o', name: 'GPT-4o', capabilities: ['smart', 'vision'] },
+  { id: 'gemini-25pro', name: 'Gemini 2.5 Pro', capabilities: ['smart'] },
+  { id: 'deepseek-v3', name: 'DeepSeek V3', capabilities: ['smart', 'code'] },
+  { id: 'ollama-qwen3', name: 'Ollama: Qwen3-32B', capabilities: ['smart', 'local'] },
+  { id: 'ollama-coder', name: 'Ollama: Qwen2.5-Coder-32B', capabilities: ['code', 'local'] },
+];
+```
+
+**Принцип**: пользователь свободно выставляет приоритеты. Новые модели легко добавляются (конфиг), старые — удаляются. Fallback автоматический по приоритету.
 
 ### 3.3 TTS Router
 
 | Провайдер | TTFB | Русский | Эмоции | Тип |
 |-----------|------|---------|--------|-----|
-| Cartesia Sonic 3 | 40ms | ✅ | ✅ | Cloud |
-| ElevenLabs Flash v2.5 | 75ms | ✅ | ✅ | Cloud |
+| Cartesia Sonic 3 | 40ms | ✅ | ✅ (speed, emotion controls) | Cloud |
+| ElevenLabs Flash v2.5 | 75ms | ✅ | ✅ ([sighs], [whispers]) | Cloud |
 | Google Wavenet | ~300ms | ✅ | ❌ | Cloud |
-| Yandex SpeechKit | ~200ms | ✅ (alena) | ✅ | Cloud |
-| Qwen3-TTS | ~100ms | ✅ | ✅ | Local |
-| Piper TTS | ~50ms | ✅ | ❌ | Local |
+| Yandex SpeechKit | ~200ms | ✅ (alena) | ✅ (роли: good, evil) | Cloud |
+| Qwen3-TTS | ~100ms | ✅ | ✅ | Local (localhost:8880) |
+| Piper TTS | ~50ms | ✅ | ❌ | Local (fallback) |
 
 **Цепочка fallback**: Cartesia → ElevenLabs → Google → Yandex → Qwen3-TTS → Piper
 
 ### 3.4 Voice Cloning
 
-| Метод | Где | Сэмпл | Латентность | Качество |
-|-------|-----|-------|-------------|----------|
-| ElevenLabs IVC | Cloud | 10 сек | 75ms | Высокое |
-| XTTS v2 (Coqui) | RTX 4090 | 6 сек | <200ms | Хорошее |
-| RVC v2 | RTX 4090 | 5 мин обучения | <100ms | Отличное |
-| OpenVoice v2 | RTX 4090 | 30 сек | GPU-dependent | Хорошее |
+Три уровня клонирования:
+
+| Метод | Где работает | Сэмпл | Латентность | Качество | Когда использовать |
+|-------|-------------|-------|-------------|----------|-------------------|
+| ElevenLabs IVC | Cloud | 10 сек | 75ms | Высокое | Основной метод, мультиязычный |
+| XTTS v2 (Coqui) | RTX 4090 | 6 сек | <200ms | Хорошее | Локальный, русский поддерживается |
+| RVC v2 | RTX 4090 | 5 мин обучения | <100ms | Отличное | Voice conversion, real-time |
+| OpenVoice v2 | RTX 4090 | 30 сек | GPU-dependent | Хорошее | Zero-shot, MIT license |
+
+**Привязка к агенту**: клонированный голос привязывается на Шаге 3 создания агента.
+
+**Для знаменитостей**: RVC v2 + локальный инференс (серая зона юридически → только для личного использования).
 
 ### 3.5 Barge-in (перебивание)
 
-VAD детектирует голос → INTERRUPT SIGNAL:
-1. Flush audio playback buffer (мгновенно)
-2. Abort текущий LLM stream (AbortController)
-3. Close TTS WebSocket connection
-4. Start new STT stream
+```
+Пользователь начал говорить
+    │
+    ▼
+VAD детектирует голос → INTERRUPT SIGNAL
+    │
+    ├─→ 1. Flush audio playback buffer (мгновенно)
+    ├─→ 2. Abort текущий LLM stream (AbortController)
+    ├─→ 3. Close TTS WebSocket connection
+    └─→ 4. Start new STT stream
+    
+    Время: < 100ms от детекции до нового потока
+```
 
-Время: < 100ms от детекции до нового потока
+### 3.6 Переключение на лету
+
+- Без перезагрузки страницы
+- Lazy init провайдеров (не создавать соединения пока не нужны)
+- При переключении: graceful shutdown текущего → init нового → ~200ms переход
+- Переключение доступно голосом ("переключи на DeepSeek") И через UI
+- State хранится в Zustand, persist в localStorage
+
+### 3.7 Быстрый старт микрофона
+
+```typescript
+// При загрузке приложения (до клика пользователя использовать нельзя — браузеры блокируют)
+// → после первого клика / тапа:
+async function warmUpAudio() {
+  // 1. getUserMedia() — получаем доступ к микрофону
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  
+  // 2. Warm-up Deepgram WebSocket (pre-connect)
+  const dgSocket = new WebSocket('wss://api.deepgram.com/v1/listen?...');
+  
+  // 3. Pre-connect к API endpoints (DNS prefetch + TCP handshake)
+  // <link rel="preconnect" href="https://api.groq.com" />
+  // <link rel="preconnect" href="https://api.cartesia.ai" />
+}
+```
 
 ---
 
@@ -197,9 +444,22 @@ VAD детектирует голос → INTERRUPT SIGNAL:
 
 **КРИТИЧНО**: поправки пользователя сохраняются НАВСЕГДА.
 
-Механизм:
-1. Каждая фраза проходит через LLM classifier
-2. Classifier определяет: это поправка/директива?
+```sql
+CREATE TABLE user_directives (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  directive TEXT NOT NULL,        -- "Не называй меня на вы"
+  source TEXT NOT NULL,           -- 'voice' | 'text' | 'settings'
+  is_active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now')),
+  deactivated_at TEXT,
+  deactivated_by TEXT             -- 'user_command' | 'opposite_directive'
+);
+```
+
+**Механизм:**
+1. Каждая фраза пользователя проходит через LLM classifier
+2. Classifier определяет: это поправка/директива? (да/нет)
 3. Если да → сохранить в `user_directives`
 4. Если противоположная команда → деактивировать старую директиву
 5. При сборке системного промпта: базовый промпт + все активные директивы
@@ -210,21 +470,28 @@ VAD детектирует голос → INTERRUPT SIGNAL:
 
 | Коллекция | Хранит | Embedding model |
 |-----------|--------|-----------------|
-| `{user_id}_conversations` | История разговоров | text-embedding-3-small |
+| `{user_id}_conversations` | История разговоров (пары вопрос-ответ) | text-embedding-3-small |
 | `{user_id}_notes` | Заметки из Obsidian | text-embedding-3-small |
 | `{user_id}_facts` | Факты о пользователе | text-embedding-3-small |
-| `{user_id}_entities` | Все сущности | text-embedding-3-small |
-| `{user_id}_voice_prints` | Голосовые отпечатки | pyannote (192-dim) |
-| `{user_id}_strategic` | Стратегическая информация | text-embedding-3-small |
+| `{user_id}_entities` | Все сущности (персоны, проекты, локации) | text-embedding-3-small |
+| `{user_id}_voice_prints` | Голосовые отпечатки персон (pyannote embeddings) | pyannote (192-dim) |
+| `{user_id}_strategic` | Стратегическая информация (от Шелестуна) | text-embedding-3-small |
 
 ### 4.3 Контекстный RAG
 
-Каждая фраза: STT → embed → ChromaDB top-10 → сборка промпта → LLM → сохранение пары
+Каждая фраза пользователя:
+1. Транскрипция (STT) → текст
+2. Embed текст → вектор
+3. Поиск top-10 в ChromaDB (conversations + facts + entities + strategic)
+4. Сборка промпта: system prompt + директивы + RAG контекст + текущий диалог
+5. LLM генерация ответа
+6. Сохранение пары (вопрос, ответ) в `conversations`
 
 ### 4.4 Shared Memory
 
-- Все LLM провайдеры используют ОДНУ ChromaDB
+- Все LLM провайдеры используют ОДНУ и ту же ChromaDB
 - Переключение мозга НЕ теряет контекст
+- History сессии хранится в Zustand (short-term) + ChromaDB (long-term)
 
 ---
 
@@ -234,56 +501,141 @@ VAD детектирует голос → INTERRUPT SIGNAL:
 
 **Гибридный подход**: Deepgram (real-time) + pyannote (идентификация).
 
-Поток: Микрофон → Deepgram (текст + SPEAKER_N) + Audio Buffer → pyannote segmentation + embedding → ChromaDB voice_prints → идентификация персоны
+```
+Микрофон (16kHz mono)
+    │
+    ├──→ Deepgram WebSocket (streaming)
+    │    └─→ Текст + SPEAKER_0, SPEAKER_1, ... (anonymous labels)
+    │    └─→ Таймстампы + длительность
+    │
+    └──→ Audio Buffer (5-sec chunks)
+         │
+         └──→ pyannote segmentation + embedding extraction
+              └─→ 192-dim embedding per speaker per chunk
+              └─→ Поиск в ChromaDB voice_prints (cosine similarity)
+              └─→ Если > threshold (0.7) → "Это Миша!"
+              └─→ Если < threshold → "Speaker N" (новый голос)
+```
 
 **pyannote на RTX 4090:**
 - 14 секунд обработки на 1 час аудио (250x real-time для batch)
-- Streaming: <100ms на 500ms chunk
+- Streaming: <100ms на 500ms chunk для embedding extraction
 - Модель: `pyannote/speaker-diarization-3.1` + `pyannote/segmentation-3.0`
-- Kmax=3 одновременных спикеров на 5-сек окно
-- Глобальный agglomerative clustering — 20+ идентичностей
+- Kmax=3 одновременных спикеров на 5-сек окно (для мафии где говорят по очереди — достаточно)
+- Глобальный agglomerative clustering отслеживает 20+ идентичностей
+
+**Параметры pipeline:**
+```python
+pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
+pipeline = pipeline.to(torch.device("cuda"))
+diarization = pipeline(audio, min_speakers=2, max_speakers=25)
+```
 
 ### 5.2 Идентификация персон
 
 3 уровня идентификации:
 1. **Голосовой отпечаток** — pyannote embedding → ChromaDB voice_prints → cosine > 0.7
-2. **Контекстный** — "Давай, Миша, твой ход" → LLM извлекает имя
+2. **Контекстный** — "Давай, Миша, твой ход" → LLM извлекает имя из контекста
 3. **Ручной** — пользователь говорит "это Миша" → сохранить embedding + имя
 
-**Обновление задним числом**: когда имя стало известно → обновить ВСЕ предыдущие реплики Speaker N
+**Обновление задним числом**: когда имя стало известно → обновить ВСЕ предыдущие реплики Speaker N → Миша (в чате и в ChromaDB).
 
 ### 5.3 Три состояния петлицы
 
-| Состояние | Описание | Активация |
-|-----------|----------|-----------|
-| **Запись** | Пассивная транскрибация | По умолчанию |
-| **Справочник** | Отвечает на прямое обращение | "Вика, подскажи..." |
-| **Участник** | Активный участник | Вручную или по команде |
+| Состояние | Описание | Сфера | Активация |
+|-----------|----------|-------|-----------|
+| **Запись** | Пассивная транскрибация, молча слушает | Мягкая пульсация, приглушённые тона | По умолчанию |
+| **Справочник** | Отвечает на прямое обращение по имени | Яркая пульсация при ответе | "Вика, подскажи..." |
+| **Участник** | Активный участник, мозговой штурм, заполняет паузы | Активная анимация, цветные всплески | Включается вручную или по команде |
 
 ### 5.4 Подсказки на ухо (Ear Hints)
 
-- Скрытый наушник: AirPods, Galaxy Buds, микронаушник, проводной
+- Скрытый наушник: AirPods, Galaxy Buds, микронаушник, проводной — любой
+- ИИ подсказывает НАТИВНО, не сбивая пользователя
 - **Аудио-роутинг**: TTS → наушник (канал A), STT ← микрофон (канал B)
+- Разделение каналов через Web Audio API routing / system audio routing
+
+**Адаптация под контекст:**
 
 | Контекст | Поведение |
 |----------|-----------|
 | Мафия | Вероятности "кто мафия", подсказки по голосованию |
-| Переговоры | Факты о собеседнике, аргументы |
+| Переговоры | Факты о собеседнике, аргументы, подсказки |
 | Тет-а-тет | Дополнительная информация, имена, даты |
 | Экзамен | Ответы, формулы, подсказки |
+| Повседневность | Напоминания, рекомендации |
 
 ### 5.5 Петлица 24/7
 
 - Рассчитана на круглосуточную работу
 - **Авто-суммаризация дня**: ежедневный дайджест (с кем говорил, ключевые темы, решения)
+- Дайджест учитывает пожелания пользователя (что важно, что пропустить)
+- Хранение: ChromaDB conversations + SQLite daily_digests
 
-### 5.6 Игровой режим "Мафия"
+```sql
+CREATE TABLE daily_digests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  date TEXT NOT NULL,
+  summary_text TEXT NOT NULL,
+  speakers JSON NOT NULL,        -- [{name, duration_min, topics}]
+  key_decisions JSON,
+  action_items JSON,
+  mood_analysis TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+```
 
-Функциональность:
+### 5.6 Анимации сферы в петлице
+
+| Событие | Анимация |
+|---------|----------|
+| Запись (idle) | Мягкая пульсация, приглушённые тона |
+| Голос владельца | Синий trail, усиленная пульсация |
+| Голос другого | Уникальный цвет (генерируется из hash имени/ID) |
+| Несколько говорящих | Разноцветные потоки переплетаются |
+| Переход состояний | Плавный морфинг 0.5с |
+| ИИ отвечает | Яркий всплеск цвета ассистента |
+
+### 5.7 Игровой режим "Мафия"
+
+**ЧАСТЫЙ сценарий** — требует отдельного UI и логики.
+
+```typescript
+// Файл: src/modules/mafia/MafiaEngine.ts
+interface MafiaGame {
+  id: string;
+  players: MafiaPlayer[];
+  rounds: MafiaRound[];
+  currentPhase: 'day' | 'night' | 'vote' | 'discussion';
+  timeline: MafiaEvent[]; // хронология в реальном времени
+}
+
+interface MafiaPlayer {
+  id: string;
+  name: string;
+  voicePrintId: string; // ссылка на ChromaDB voice_prints
+  role?: 'mafia' | 'citizen' | 'don' | 'sheriff' | 'doctor'; // скрыта до конца
+  isAlive: boolean;
+  suspicionScore: number; // 0-100, вероятность что мафия
+  votes: { round: number; votedFor: string }[];
+  psychoProfile?: string; // склейка с Telegram переписками
+}
+
+interface MafiaRound {
+  number: number;
+  phase: 'day' | 'night';
+  speeches: { playerId: string; text: string; timestamp: number }[];
+  votes: { voterId: string; targetId: string }[];
+  eliminated?: string; // playerId
+}
+```
+
+**Функциональность:**
 1. Отдельный UI: список игроков, роли (скрытые), статус живой/мёртвый
 2. Трекинг: кто голосовал за кого, кто кого подозревает
 3. Вероятности "кто мафия" — на основе логики, хронологии, слов, поведения
-4. Психопрофили игроков — склейка с данными из Telegram переписок
+4. Психопрофили игроков — склейка с данными из Telegram переписок (Шелестун)
 5. Хронология всей игры в реальном времени
 6. Подсказки на ухо владельцу
 
@@ -295,19 +647,65 @@ VAD детектирует голос → INTERRUPT SIGNAL:
 
 Переключение свайпом по шару: **Ассистент** ↔ **Петлица** ↔ **Агент**
 
+В режиме "Агент":
+- Список созданных агентов (карточки с аватарами)
+- Кнопка "Создать нового агента"
+- Активный агент — голосовой диалог, остальные в фоне
+
 ### 6.2 Создание агента (3 шага)
 
 **ШАГ 1 — Экспертиза:**
-1. Пользователь даёт короткий промпт: "создай агента-инвестора"
+```typescript
+interface AgentExpertise {
+  prompt: string;             // "создай агента по инвестициям"
+  sources: ExpertiseSource[]; // собранные источники
+  ragCollection: string;      // ChromaDB collection для агента
+}
+
+interface ExpertiseSource {
+  type: 'youtube' | 'paper' | 'forum' | 'telegram' | 'website' | 'book';
+  url: string;
+  title: string;
+  summary: string;
+  embeddingIds: string[];  // IDs в ChromaDB
+}
+```
+
+**Процесс:**
+1. Пользователь даёт короткий промпт (текст/голос): "создай агента-инвестора"
 2. ИИ решает какая экспертиза нужна
 3. Автоматический сбор СОТЕН источников: YouTube, научные статьи, форумы, Telegram
 4. Источники → ingestion в ChromaDB (отдельная коллекция для агента)
 5. **Замена NotebookLM**: собственный RAG на LangChain + ChromaDB + Gemini Flash
+   - Document ingestion (PDF, URL, video transcripts)
+   - Source-grounded Q&A
+   - Summary generation
+6. Мягкий вопрос пользователю: "есть ли пожелания по экспертизе?"
+7. Всё общение с агентом — в долговременной памяти
 
 **ШАГ 2 — Характер:**
+```typescript
+interface AgentCharacter {
+  name: string;               // задаётся пользователем или генерируется
+  traits: CharacterTraits;
+  voiceStyle: 'formal' | 'casual' | 'friendly' | 'authoritative';
+  directives: string[];       // вечные поправки пользователя
+}
+
+interface CharacterTraits {
+  humor: number;      // 0-100 (бегунок/слайдер)
+  empathy: number;    // 0-100
+  directness: number; // 0-100
+  creativity: number; // 0-100
+  formality: number;  // 0-100
+  patience: number;   // 0-100
+}
+```
+
 - VoiceZettel знает пользователя → автоматически подбирает оптимальные черты
-- Бегунки/слайдеры: humor, empathy, directness, creativity, formality, patience (0-100)
+- Бегунки/слайдеры для ручной корректировки
 - Голосовые замечания сохраняются навсегда (директивы)
+- Имя меняется в любой момент
 
 **ШАГ 3 — Внешность:**
 - Шар из облака точек генерирует образ агента
@@ -317,464 +715,842 @@ VAD детектирует голос → INTERRUPT SIGNAL:
 
 ### 6.3 Инструменты агента
 
-- memory: ChromaDB (своя коллекция)
-- obsidian: ObsidianAPI (чтение/запись заметок)
-- webSearch: SearchAPI
-- openClaw: computer-use agent
-- telegramBot: отправка уведомлений
-- smartHome: управление умным домом
+```typescript
+interface AgentToolkit {
+  // Встроенные
+  memory: ChromaDBAccess;      // доступ к своей коллекции
+  obsidian: ObsidianAPI;       // чтение/запись заметок
+  webSearch: SearchAPI;        // поиск в интернете
+  
+  // Внешние
+  openClaw: OpenClawAPI;       // computer-use agent
+  telegramBot: TelegramBotAPI; // отправка уведомлений
+  smartHome: SmartHomeAPI;     // управление умным домом (отдельный агент)
+  
+  // Специализированные (добавляются по необходимости)
+  calendar: CalendarAPI;
+  email: EmailAPI;
+  github: GitHubAPI;
+}
+```
 
 ### 6.4 Оркестратор агентов
 
-FIFO очередь задач с VRAM-менеджером:
-- Задачи с флагом needs_gpu → проверяют доступную VRAM
-- Если недостаточно → выгрузить наименее используемую модель
-- Scheduler: каждые 100ms проверяет очередь
+**Конференции агентов:**
+```typescript
+interface AgentConference {
+  id: string;
+  topic: string;
+  participants: AgentParticipant[];
+  moderator: 'user' | 'auto'; // пользователь или автоматически
+  mode: 'debate' | 'brainstorm' | 'review' | 'custom';
+  rounds: ConferenceRound[];
+  output: ConferenceOutput; // итоговое решение/суммари
+}
+```
 
-### 6.5 Конференции агентов
+**Взаимный контроль:** агенты могут проверять работу друг друга (code review, fact-check).
 
-- Несколько агентов обсуждают задачу
-- Каждый агент → отдельный LLM instance с контекстом
-- Итоговый ответ = синтез мнений
-- Голосовой вывод: каждый агент говорит своим голосом (voice clone)
+**Очередь задач + VRAM менеджмент:**
+```typescript
+interface ModelQueue {
+  queue: ModelTask[];
+  currentModel: string | null; // что сейчас загружено в VRAM
+  vramBudget: number;          // 24GB
+  
+  async loadModel(modelName: string): Promise<void> {
+    if (this.currentModel === modelName) return; // уже загружена
+    if (this.currentModel) await this.unloadModel(this.currentModel); // освободить VRAM
+    await ollamaClient.pull(modelName); // загрузить нужную
+    this.currentModel = modelName;
+  }
+}
+```
 
-### 6.6 Внешние агенты
+### 6.5 Внешние агенты
 
-| Агент | Задача |
-|-------|--------|
-| Perplexity AI | Веб-поиск + синтез |
-| Cursor | Написание кода |
-| Antigravity (Computer) | Сложные задачи |
-| OpenClaw | Computer-use |
+| Агент | Интеграция | Когда использовать |
+|-------|-----------|-------------------|
+| Perplexity | REST API | Актуальный поиск с источниками |
+| Cursor | MCP | Code tasks |
+| Antigravity | API | Специализированные задачи |
+| OpenClaw | WebSocket | Computer-use (автоматизация рабочего стола) |
 
 ---
 
-## Модуль 7: Шелестун (фоновый аналитик)
+## Модуль 7: Шелестун
 
-### 7.1 Обзор
+**Концепция**: Шелестун — это отдельный Ollama-агент, работающий в фоне 24/7, только для admin (Антона). Он наблюдает за информационным полем и "шелестит" интересными находками.
 
-Автономный фоновый агент — ТОЛЬКО для admin.
+### 7.1 Источники данных
 
-**Источники данных:**
-| Источник | Данные |
-|----------|--------|
-| Telegram переписки | Социальные графы, намерения, ключевые темы |
-| Galaxy Watch 8 | ЧСС, HRV, сон, стресс, активность |
-| Часы системы | Что делал когда |
-| Геолокация | Где был, паттерны перемещений |
-| Голосовые разговоры (петлица) | С кем говорил, о чём |
-| Obsidian заметки | Проекты, задачи, мысли |
-| Obsidian граф | Связи между концепциями |
-| Перфокарта | Привычки, достижения, паттерны |
-
-### 7.2 Функции
-
-1. **Социальный граф**: кто кому кем приходится, сила связи, паттерны общения
-2. **Анализ намерений**: "Миша хочет занять денег" (из переписки)
-3. **Предиктивный инсайт**: "Послезавтра встреча с Лёшей — он обычно опаздывает"
-4. **Контекст для петлицы**: кто этот человек, что о нём известно
-5. **Психопрофили**: склейка данных из Telegram, голоса, поведения
-6. **Стратегические рекомендации**: еженедельный отчёт
-7. **Мониторинг здоровья**: аномалии ЧСС/сна → предупреждение
-
-### 7.3 Архитектура
-
+```typescript
+interface ShelestunSources {
+  telegram: {
+    channels: string[];      // подписки пользователя
+    chats: string[];         // переписки (с согласия)
+    groups: string[];        // групповые чаты
+    parser: 'telegram-exporter' | 'pyrogram'; // инструмент парсинга
+  };
+  social: {
+    twitter: string[];       // аккаунты за которыми следим
+    reddit: string[];        // subreddits
+    hn: boolean;             // Hacker News top
+  };
+  clock: {
+    timezone: string;        // Asia/Barnaul
+    workHours: [9, 22];      // активные часы для уведомлений
+  };
+  geo: {
+    homeLocation: [number, number]; // координаты дома
+    trackDevice: 'phone' | 'watch' | 'both';
+  };
+  health: SamsungHealthData; // через companion app
+  calendar: GoogleCalendarAPI;
+}
 ```
-Ollama node (Qwen3-32B, фоновый процесс)
-    │
-    ├── Scheduled jobs (cron):
-    │   ├── Каждые 30 мин: анализ новых Telegram сообщений
-    │   ├── Каждый час: обновление социального графа
-    │   ├── Ежедневно 3:00: генерация инсайтов + синхронизация с ChromaDB
-    │   └── Еженедельно: стратегический отчёт
-    │
-    ├── Event-driven (мгновенно):
-    │   ├── Начало разговора петлицы → контекст из социального графа
-    │   └── Запрос пользователя → real-time анализ
-    │
-    └── Хранилище: ChromaDB `{admin_id}_strategic` + SQLite `shelestun_insights`
+
+### 7.2 Социальные графы
+
+```typescript
+interface SocialGraph {
+  nodes: Person[];
+  edges: Relationship[];
+  
+  // Из Telegram переписок
+  buildFromTelegram(chats: TelegramChat[]): void;
+  
+  // Обновление при новых взаимодействиях
+  updateRelationship(person1: string, person2: string, interaction: Interaction): void;
+}
+
+interface Person {
+  id: string;
+  name: string;
+  aliases: string[];           // "Миша", "Михаил", "Misha"
+  voicePrintId?: string;       // если записан
+  telegramId?: string;
+  psychoProfile?: string;      // аналитика характера
+  lastSeen?: string;
+  topics: string[];            // о чём обычно говорит
+  sentiment: number;           // -1 to 1
+}
 ```
+
+### 7.3 Уведомления и триггеры
+
+```typescript
+interface ShelestunAlert {
+  type: 'news' | 'person' | 'opportunity' | 'reminder' | 'health' | 'location';
+  priority: 'whisper' | 'normal' | 'urgent'; // "шелест" vs нормальное vs срочное
+  delivery: 'voice' | 'telegram_bot' | 'notification';
+  timing: 'immediate' | 'next_conversation' | 'scheduled';
+  content: string;
+}
+```
+
+**Примеры триггеров:**
+- "Миша вернулся из отпуска" (анализ Telegram)
+- "Выход нового исследования по теме инвестиций"
+- "Напоминание: завтра встреча с Ромой"
+- "Стресс-индекс высокий сегодня" (Galaxy Watch)
+- "Ты рядом с супермаркетом — список покупок:"
+
+### 7.4 Ollama для Шелестуна
+
+```yaml
+# docker-compose.yml (Shelestun service)
+shelestun:
+  image: ollama/ollama
+  volumes:
+    - ./shelestun:/app
+  environment:
+    OLLAMA_MODEL: qwen3:32b
+    TASK_SCHEDULE: "*/15 * * * *"  # каждые 15 минут
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            device_ids: ['0']
+            capabilities: [gpu]
+```
+
+**Архитектура**: отдельный Node.js сервис (`shelestun-service`) → общается с основным приложением через WebSocket/Redis.
 
 ---
 
-## Модуль 8: Умный дом
+## Модуль 8: Obsidian-интеграция и сущности
 
-### 8.1 Стек
+### 8.1 Obsidian REST API
 
-| Уровень | Технология |
-|---------|------------|
-| Верхний | Yandex IoT API (Алиса, устройства Яндекс) |
-| Средний | Home Assistant (local, REST API) |
-| Нижний | MQTT Broker (Mosquitto) + Zigbee2MQTT |
-| Устройства | Zigbee датчики, умные розетки, освещение, AC |
-
-### 8.2 Голосовое управление
-
+```typescript
+// Файл: src/lib/obsidian-client.ts
+interface ObsidianClient {
+  baseUrl: string; // http://localhost:27123
+  apiKey: string;
+  
+  // Основные операции
+  readNote(path: string): Promise<string>;
+  writeNote(path: string, content: string): Promise<void>;
+  appendToNote(path: string, content: string): Promise<void>;
+  searchNotes(query: string): Promise<SearchResult[]>;
+  listNotes(folder: string): Promise<string[]>;
+  
+  // Теги и метаданные
+  getTaggedNotes(tag: string): Promise<string[]>;
+  updateFrontmatter(path: string, data: object): Promise<void>;
+}
 ```
-Пользователь: "выключи свет в спальне"
-    │
-    ├── Intent recognition (LLM): entity="спальня", action="выключить", type="свет"
-    ├── Device lookup: ChromaDB devices → {id: "bedroom_light", protocol: "zigbee"}
-    └── Execute:
-        ├── Если Яндекс-устройство → Yandex IoT API
-        ├── Если Zigbee → Home Assistant REST API → Zigbee2MQTT → устройство
-        └── Confirm: "Свет в спальне выключен"
+
+### 8.2 Система сущностей
+
+| Тип сущности | Описание | Хранение |
+|-------------|----------|----------|
+| Персона | Контакт, знакомый, публичная фигура | Obsidian + ChromaDB |
+| Проект | Работа, личный проект, хобби | Obsidian + SQLite |
+| Локация | Место, адрес, точка интереса | Obsidian + SQLite |
+| Идея | Случайная мысль, инсайт | Obsidian |
+| Задача | To-do, ремайндер, дедлайн | Obsidian + SQLite tasks |
+| Событие | Встреча, праздник, дедлайн | Obsidian + Google Calendar |
+| Материал | Книга, фильм, курс, ссылка | Obsidian |
+| Рефлексия | Дневниковые записи, эмоции | Obsidian (приватное) |
+
+**Toggle-управление**: каждый тип сущности включается/выключается в настройках. Выключенный тип не распознаётся и не сохраняется.
+
+### 8.3 Self-Heal механизм
+
+**Источник**: tonymodl/Voicezettel → Self-Heal логика.
+
+```typescript
+// Файл: src/lib/self-heal.ts
+interface SelfHealCheck {
+  component: string;
+  status: 'ok' | 'degraded' | 'failed';
+  lastCheck: string;
+  autoFix?: () => Promise<void>;
+}
+
+async function runHealthChecks(): Promise<SelfHealReport> {
+  const checks = await Promise.all([
+    checkChromaDB(),
+    checkObsidianAPI(),
+    checkOllamaModels(),
+    checkSTTProviders(),
+    checkLLMProviders(),
+    checkTTSProviders(),
+  ]);
+  
+  // Автоматическое исправление если возможно
+  for (const check of checks.filter(c => c.status !== 'ok')) {
+    if (check.autoFix) await check.autoFix();
+  }
+  
+  return { checks, timestamp: new Date().toISOString() };
+}
 ```
 
-### 8.3 Контексты умного дома
-
-- Сценарии (routine): "Я иду спать" → выключить всё, закрыть жалюзи, 18°C
-- Геолокация: "Я дома" / "Я вышел" → автоматические сценарии
-- Интеграция со здоровьем: плохой сон → снизить яркость утром
-- Умный будильник: постепенное включение света за 30 мин до подъёма
+Health check dashboard доступен в admin панели.
 
 ---
 
-## Модуль 9: Telegram бот (админка)
+## Модуль 9: Умный дом
 
-### 9.1 Функции
+### 9.1 Яндекс IoT
+
+```typescript
+// Файл: src/lib/smart-home/yandex-iot.ts
+interface YandexIoTClient {
+  // Алиса
+  sendAliceCommand(command: string): Promise<void>;
+  getAliceStatus(): Promise<AliceStatus>;
+  
+  // Устройства (не через Алису, напрямую)
+  listDevices(): Promise<YandexDevice[]>;
+  controlDevice(deviceId: string, action: DeviceAction): Promise<void>;
+  getDeviceState(deviceId: string): Promise<DeviceState>;
+}
+```
+
+### 9.2 Home Assistant
+
+```typescript
+// Файл: src/lib/smart-home/home-assistant.ts
+interface HomeAssistantClient {
+  wsUrl: string; // ws://homeassistant.local:8123/api/websocket
+  token: string;
+  
+  // Entity control
+  callService(domain: string, service: string, entityId: string, data?: object): Promise<void>;
+  getState(entityId: string): Promise<HAState>;
+  subscribeStateChanges(callback: (state: HAState) => void): void;
+  
+  // Примеры
+  turnOnLight(entityId: string): Promise<void>;
+  setTemperature(entityId: string, temp: number): Promise<void>;
+  lockDoor(entityId: string): Promise<void>;
+}
+```
+
+### 9.3 MQTT / Zigbee
+
+```typescript
+// Файл: src/lib/smart-home/mqtt-client.ts
+interface MQTTSmartHome {
+  broker: string; // mqtt://localhost:1883
+  topics: {
+    sensors: 'zigbee2mqtt/+/+'; // температура, влажность, движение
+    commands: 'zigbee2mqtt/+/set'; // управление
+    status: 'zigbee2mqtt/bridge/state';
+  };
+}
+```
+
+### 9.4 Голосовые команды умного дома
 
 | Команда | Действие |
 |---------|----------|
-| /whitelist add email@test.com | Добавить пользователя |
-| /whitelist remove email@test.com | Удалить пользователя |
-| /stats | Статистика использования |
-| /logs | Последние логи |
-| /models | Активные LLM модели |
-| /budget | Трекинг токенов и стоимость |
-| /restart | Рестарт сервисов |
+| "Выключи свет" | HA → turn_off all lights |
+| "Включи кондей на 22" | Yandex IoT → set AC temp |
+| "Покажи камеру в прихожей" | RTSP stream → UI overlay |
+| "Кто звонил в дверь?" | Дверной звонок event log |
+| "Есть ли кто дома?" | Motion sensors status |
 
-### 9.2 Уведомления (push от сервера)
+### 9.5 Galaxy Watch 8 (Samsung Health)
 
-- Ошибки и исключения (> severity threshold)
-- Превышение бюджета токенов
-- Новый пользователь запросил доступ
-- Шелестун нашёл важный инсайт
-- Аномалии здоровья (из Galaxy Watch)
-
-### 9.3 Импорт Telegram переписок
-
-- Telegram Data Export (JSON) → парсер → ChromaDB
-- Telegram Exporter скрипт для автоматизации
-- Цель: обогатить Шелестун данными о социальных связях
-
----
-
-## Модуль 10: Трекинг токенов и бюджет
-
-### 10.1 Таблица SQLite
-
-```sql
-CREATE TABLE token_usage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  provider TEXT NOT NULL,
-  model TEXT NOT NULL,
-  prompt_tokens INTEGER NOT NULL,
-  completion_tokens INTEGER NOT NULL,
-  cost_usd REAL NOT NULL,
-  session_id TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
-);
+```typescript
+// Android companion app → HTTP API → VoiceZettel backend
+interface GalaxyWatchData {
+  heartRate: number;
+  hrv: number;          // Heart Rate Variability
+  stressIndex: number;  // 1-100
+  spo2: number;         // кислород в крови
+  steps: number;
+  caloriesBurned: number;
+  sleep: SleepData;
+  workoutData: WorkoutData;
+  bodyTemperature: number;
+  bloodPressure?: BloodPressureData;
+}
 ```
 
-### 10.2 Дашборд
-
-- Расход по провайдерам/моделям
-- Графики за день/неделю/месяц
-- Бюджет лимит: предупреждение в Telegram при превышении 80%
-- Топ-10 самых дорогих запросов
-- Сравнение стоимости при разных конфигурациях
+**Использование**: Шелестун анализирует данные часов → предупреждает о высоком стрессе, аномальном пульсе, рекомендует паузы.
 
 ---
 
-## Модуль 11: Инфраструктура
+## Модуль 10: Телеграм-бот (adminка)
 
-### 11.1 Сервисы
+```typescript
+// Файл: src/bot/telegram-bot.ts
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!);
 
-| Сервис | Порт | Технология |
-|--------|------|------------|
-| Next.js App | 3000 | Node.js |
-| ChromaDB | 8000 | Python |
-| Ollama | 11434 | Go |
-| Qwen3-TTS | 8880 | Python |
-| pyannote service | 8765 | Python/WebSocket |
-| Home Assistant | 8123 | Python |
-| MQTT Broker | 1883 | Mosquitto |
+// Команды
+bot.command('status', async (ctx) => { /* статус системы */ });
+bot.command('whitelist_add', async (ctx) => { /* добавить email */ });
+bot.command('whitelist_remove', async (ctx) => { /* удалить email */ });
+bot.command('users', async (ctx) => { /* список пользователей */ });
+bot.command('stats', async (ctx) => { /* статистика использования */ });
+bot.command('tokens', async (ctx) => { /* потраченные токены */ });
+bot.command('shelestun', async (ctx) => { /* статус Шелестуна */ });
 
-### 11.2 Nginx + HTTPS
-
-- Nginx reverse proxy: voicezettel.online → localhost:3000
-- Let's Encrypt: автоматический SSL
-- Fail2ban: защита от брут-форса
-- Rate limiting: 100 req/min per IP
-
-### 11.3 Backup
-
-- SQLite: ежедневный snapshot → Backblaze B2
-- ChromaDB: еженедельный export → Yandex Object Storage
-- Obsidian: git sync (уже настроен)
-- Конфиги: git repo (private)
-
-### 11.4 Docker Compose
-
-Все сервисы в docker-compose.yml:
-- next-app, chromadb, ollama, qwen3-tts, pyannote-service, homeassistant, mosquitto
-- Volumes для персистентных данных
-- Health checks для каждого сервиса
-- Restart policy: always
-
----
-
-## Модуль 12: Перфокарта (геймификация)
-
-### 12.1 Концепция
-
-Перфокарта — система трекинга привычек и геймификации жизни.
-
-**Принцип**: жизнь = RPG. Каждое действие = очки. Цель = прокачать персонажа.
-
-### 12.2 Авто-трекинг
-
-| Источник | Что трекается |
-|----------|---------------|
-| Galaxy Watch 8 | Шаги, ЧСС, сон, стресс, тренировки |
-| Петлица (голос) | Разговоры, встречи, выступления |
-| Шелестун | Социальные взаимодействия, продуктивность |
-| Telegram бот | Ручные отметки |
-| Obsidian | Заметки, задачи, проекты |
-
-### 12.3 Google Sheets интеграция
-
-- Основное хранилище: Google Sheets (наглядно, гибко)
-- Google Sheets API v4: чтение/запись из Next.js
-- Структура: лист "Привычки", лист "Очки", лист "Достижения", лист "График"
-- Auto-update: раз в час или по событию
-
-### 12.4 Уведомления
-
-- Telegram: ежедневный итог (очки за день, streak, достижения)
-- Push-notification (если Progressive Web App включён)
-- Голосовой отчёт через ассистента по запросу
-
----
-
-## Модуль 13: Obsidian интеграция
-
-### 13.1 Obsidian Local REST API
-
-**Plugin**: `coddingtonbear/obsidian-local-rest-api`
-
-Эндпоинты:
-- `GET /vault/{filename}` — читать заметку
-- `PUT /vault/{filename}` — записать/обновить заметку
-- `POST /vault/{filename}` — создать заметку
-- `GET /search/simple/?q={query}` — поиск
-- `POST /commands/execute` — выполнить команду
-
-### 13.2 Сценарии использования
-
-1. **Ассистент читает заметки**: "что я писал про проект X?" → поиск + RAG
-2. **Ассистент создаёт заметки**: "запомни: встреча с Колей в пятницу" → новая заметка
-3. **Шелестун обновляет граф**: добавляет инсайты, связи, анализ
-4. **Агент-исследователь**: собирает и структурирует информацию в Obsidian
-5. **Синхронизация с ChromaDB**: при изменении заметок → re-embed → обновить векторы
-
-### 13.3 Двустороняя синхронизация
-
+// Уведомления
+interface TelegramNotifications {
+  newUserRequest: (email: string) => void; // кто-то просит доступ
+  systemAlert: (message: string) => void;   // критическая ошибка
+  shelestunAlert: (alert: ShelestunAlert) => void; // Шелестун нашёл что-то интересное
+  dailyDigest: (digest: DailyDigest) => void; // дайджест дня
+}
 ```
-Obsidian изменил заметку
-    │
-    └── Webhook / polling (каждые 30 мин) → Next.js
-            │
-            └── Re-embed → ChromaDB `{user_id}_notes` обновить
+
+**Polling vs Webhook**: webhook через ngrok/белый IP для production, polling для разработки.
+
+---
+
+## Модуль 11: Перфокарта (Gamification)
+
+### 11.1 Концепция
+
+Перфокарта = геймификация ЖИЗНИ. Автоматический трекинг активностей → очки → достижения → прогресс.
+
+### 11.2 Google Sheets интеграция
+
+```typescript
+// Файл: src/lib/perfocard/google-sheets.ts
+interface PerfocardSheets {
+  spreadsheetId: string;
+  sheets: {
+    activities: 'Activities';  // лог активностей
+    habits: 'Habits';         // привычки и стрики
+    achievements: 'Achievements'; // разблокированные достижения
+    dashboard: 'Dashboard';   // сводная статистика
+  };
+}
+```
+
+### 11.3 Авто-трекинг через голос и сенсоры
+
+```typescript
+interface ActivityDetector {
+  // Из разговоров (NLU)
+  extractActivities(transcript: string): Activity[];
+  // Примеры: "поиграл в теннис" → {type: 'sport', name: 'tennis', duration: ?}
+  
+  // Из Galaxy Watch
+  detectWorkout(watchData: GalaxyWatchData): Workout | null;
+  
+  // Из геолокации
+  detectPlaceVisit(location: GeoLocation): PlaceVisit | null;
+  
+  // Из календаря
+  importCalendarEvents(events: CalendarEvent[]): Activity[];
+}
+```
+
+### 11.4 Структура активности
+
+```typescript
+interface Activity {
+  id: string;
+  type: ActivityType; // sport | work | learning | social | health | creative | rest
+  name: string;
+  duration?: number;   // минуты
+  intensity?: number;  // 1-10
+  points: number;      // автоматически расчитываются
+  timestamp: string;
+  source: 'voice' | 'watch' | 'manual' | 'calendar' | 'geo';
+  verified: boolean;   // подтверждено пользователем
+}
+
+type ActivityType = 
+  | 'sport'      // спорт, тренировки
+  | 'work'       // работа, проекты
+  | 'learning'   // обучение, чтение
+  | 'social'     // общение, встречи
+  | 'health'     // медицина, самочувствие
+  | 'creative'   // творчество, хобби
+  | 'rest';      // отдых, сон
+```
+
+### 11.5 Достижения
+
+```typescript
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // emoji или SVG
+  condition: AchievementCondition;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  unlockedAt?: string;
+}
 ```
 
 ---
 
-## Модуль 14: Аватар агента (Particle Avatar)
+## Модуль 12: Трекинг токенов
 
-### 14.1 Концепция
+```typescript
+// Файл: src/lib/token-tracker.ts
+interface TokenUsage {
+  provider: string;    // 'groq', 'openai', 'anthropic', etc.
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;        // USD
+  timestamp: string;
+  userId: string;
+  sessionId: string;
+  context: string;     // 'assistant' | 'lapel' | 'agent' | 'shelestun'
+}
 
-- Аватар агента = 3D объект из частиц (dots, particles)
-- Источник: Three.js Points с GLSL шейдерами
-- Морфинг между формами: сфера → лицо → персонаж → существо
-- Lip-sync через visemes (15 форм рта)
-- Настроение = цвет + анимация частиц
+// SQLite таблица
+// SELECT provider, model, SUM(cost) FROM token_usage GROUP BY 1, 2
+// Отображается в: настройки (текущий пользователь) + admin панель (все)
+```
 
-### 14.2 TalkingHead интеграция
-
-**TalkingHead** (Open-source Three.js библиотека):
-- Загружает GLTF/GLB аватар
-- Генерирует viseme animations по аудио
-- Blend shapes для мимики
-- Eye blinking, head movement
-
-**Адаптация под particles:**
-- Вместо mesh → particles на позициях вершин
-- Blend shapes = морфинг позиций частиц
-- Сохраняем particles aesthetic, добавляем анимацию
-
-### 14.3 Morph Targets
-
-Минимальный набор morph targets для агента:
-- sphere: базовая сфера (нейтральное состояние)
-- face_neutral: нейтральное лицо
-- face_speaking: открытый рот (говорит)
-- face_smile: улыбка
-- face_thinking: задумчивость
-- cloud: облако частиц (переходное состояние)
-- custom: кастомная форма (задаётся при создании)
+**Дашборд** показывает:
+- Расход по провайдерам (график)
+- Топ-5 дорогих сессий
+- Прогноз месячных расходов
+- Сравнение с предыдущими периодами
 
 ---
 
-## Модуль 15: Клонирование голоса
+## Модуль 13: Аналитика (GA4 + Яндекс Метрика)
 
-(Описание выше в Модуле 3.4)
-
-Дополнительно:
-- **Привязка к агенту**: клонированный голос = идентичность агента
-- **Мультиязычность**: ElevenLabs IVC поддерживает 32 языка включая русский
-- **Качество vs Скорость**: ElevenLabs (облако, высокое качество) vs XTTS/RVC (локально, быстро)
-- **Real-time voice conversion**: RVC v2 на RTX 4090 — 210x real-time = практически без задержки
+```typescript
+// Файл: src/lib/analytics.ts
+interface AnalyticsEvents {
+  // Голосовые события
+  voice_session_start: { mode: 'assistant' | 'lapel' | 'agent'; provider: string };
+  voice_session_end: { duration: number; turns: number };
+  barge_in: { provider: string };
+  
+  // Провайдеры
+  provider_switch: { from: string; to: string; reason: 'user' | 'fallback' };
+  provider_error: { provider: string; error: string };
+  
+  // Агенты
+  agent_created: { step: 1 | 2 | 3 };
+  agent_conversation: { agentId: string; turns: number };
+  agent_conference: { participants: number; mode: string };
+  
+  // Умный дом
+  smart_home_command: { device: string; action: string };
+}
+```
 
 ---
 
-## Модуль 16: Интеграция Samsung Health
+## Модуль 14: Инфраструктура и деплой
 
-### 16.1 Galaxy Watch 8 данные
+### 14.1 Nginx конфигурация
 
-| Метрика | Частота | Использование |
-|---------|---------|---------------|
-| ЧСС | Каждые 10 мин | Мониторинг стресса |
-| HRV | Ночью | Качество восстановления |
-| SPO2 | По запросу | Здоровье |
-| Стресс | Каждые 30 мин | Рекомендации |
-| Сон | Ежедневно | Оптимизация режима |
-| Шаги | Ежедневно | Активность |
-| Тренировки | По событию | Трекинг |
+```nginx
+# /etc/nginx/sites-available/voicezettel
+server {
+    listen 80;
+    listen [::]:80;
+    server_name voicezettel.online www.voicezettel.online;
+    return 301 https://$server_name$request_uri;
+}
 
-### 16.2 Архитектура
+server {
+    listen 443 ssl http2;
+    server_name voicezettel.online www.voicezettel.online;
+    
+    ssl_certificate /etc/letsencrypt/live/voicezettel.online/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/voicezettel.online/privkey.pem;
+    
+    # Next.js приложение
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    
+    # WebSocket для голоса
+    location /ws {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_read_timeout 3600;
+    }
+    
+    # ChromaDB (внутренний, не публичный)
+    location /chromadb {
+        internal;
+        proxy_pass http://localhost:8000;
+    }
+}
+```
 
-- Samsung Health Data SDK (Android)
-- Android companion app (или Tasker + HTTP)
-- → REST API endpoint на сервере
-- → SQLite health_metrics таблица
-- → ChromaDB для трендов и аномалий
+### 14.2 PM2 конфигурация
 
-### 16.3 Использование данных
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'voicezettel',
+      script: 'npm',
+      args: 'start',
+      env: { NODE_ENV: 'production', PORT: 3000 },
+      restart_delay: 5000,
+      max_restarts: 10
+    },
+    {
+      name: 'shelestun',
+      script: 'node',
+      args: 'services/shelestun/index.js',
+      cron_restart: '0 4 * * *' // рестарт в 4 утра
+    },
+    {
+      name: 'chromadb',
+      script: 'chroma',
+      args: 'run --path ./data/chroma --port 8000'
+    }
+  ]
+};
+```
 
-- Шелестун: аномалии ЧСС/сна → предупреждения
-- Перфокарта: активность = очки
-- Умный дом: плохой сон → режим "мягкого утра"
-- Ассистент: "судя по данным часов, ты не выспался — хочешь сократить задачи на сегодня?"
+### 14.3 Бэкап стратегия
+
+```
+Ежедневно в 03:00:
+├── SQLite dump → ./backups/sqlite/YYYY-MM-DD.db
+├── ChromaDB snapshot → ./backups/chroma/YYYY-MM-DD/
+├── Obsidian vault → ./backups/obsidian/YYYY-MM-DD.zip
+└── .env файл → encrypted → Backblaze B2
+
+Еженедельно:
+└── Полный архив → Yandex Object Storage
+
+Полное время восстановления: < 30 мин
+```
+
+### 14.4 Безопасность
+
+```
+Fail2ban:
+- SSH: 3 попытки → бан 1 час
+- HTTPS: 100 req/min → бан 10 мин
+
+ufw:
+- 22/tcp (SSH) — только whitelist IP
+- 80/tcp (HTTP → redirect)
+- 443/tcp (HTTPS)
+- Всё остальное DENY
+
+Secretes:
+- .env не в git
+- API ключи через systemd environment
+- Ротация ключей каждые 90 дней (напоминание через Telegram бот)
+```
 
 ---
 
-## Модуль 17: Административная панель
+## Модуль 15: Frontend роутинг и структура проекта
 
-### 17.1 Роутинг
-
-`/admin` — только для role=admin
-
-### 17.2 Разделы
-
-| Раздел | Функция |
-|--------|----------|
-| Пользователи | CRUD, whitelist, роли, статистика |
-| Модели | Активные провайдеры, API ключи, приоритеты |
-| Токены | Расход, бюджет, топ запросы |
-| Шелестун | Инсайты, граф, настройки |
-| Логи | Real-time логи, ошибки, фильтры |
-| Системные настройки | Все глобальные конфиги |
-| Telegram бот | Статус, тест, лог команд |
+```
+src/
+├── app/                        # Next.js App Router
+│   ├── page.tsx                # Главная (сфера + чат)
+│   ├── admin/                  # Админ панель
+│   │   ├── page.tsx            # Дашборд
+│   │   ├── users/page.tsx      # Управление пользователями
+│   │   ├── tokens/page.tsx     # Трекинг токенов
+│   │   └── health/page.tsx     # Self-heal статус
+│   ├── agents/                 # Агенты
+│   │   ├── page.tsx            # Список агентов
+│   │   ├── create/page.tsx     # Создание (3 шага)
+│   │   └── [id]/page.tsx       # Агент детали
+│   ├── mafia/page.tsx          # Игра мафия
+│   └── api/                   # API роуты
+│       ├── auth/[...nextauth]/ # NextAuth.js
+│       ├── voice/              # Голосовой пайплайн
+│       │   ├── stt/route.ts
+│       │   ├── llm/route.ts
+│       │   └── tts/route.ts
+│       ├── memory/             # ChromaDB операции
+│       ├── obsidian/           # Obsidian API proxy
+│       ├── agents/             # CRUD агентов
+│       ├── smart-home/         # Умный дом
+│       └── admin/              # Административные операции
+├── components/
+│   ├── particle-system/        # Three.js сфера, avatar, lip-sync
+│   ├── chat/                   # Интерфейс чата
+│   ├── settings/               # Панель настроек
+│   ├── lapel/                  # Режим петлицы
+│   ├── agents/                 # UI агентов
+│   └── ui/                    # shadcn/ui компоненты
+├── lib/
+│   ├── auth.ts                # NextAuth конфиг
+│   ├── db.ts                  # SQLite (better-sqlite3)
+│   ├── chroma.ts              # ChromaDB клиент
+│   ├── voice-pipeline/        # STT/LLM/TTS роутеры
+│   ├── obsidian-client.ts     # Obsidian REST API
+│   ├── smart-home/            # IoT интеграции
+│   ├── shelestun/             # Шелестун клиент
+│   ├── perfocard/             # Перфокарта
+│   ├── token-tracker.ts       # Трекинг токенов
+│   ├── self-heal.ts           # Self-heal
+│   └── analytics.ts           # GA4 + Яндекс Метрика
+├── modules/
+│   └── mafia/                 # Игровая логика мафии
+├── store/
+│   ├── voice.ts               # Zustand voice state
+│   ├── agents.ts              # Zustand agents state
+│   └── settings.ts            # Zustand settings state
+└── types/
+    └── index.ts               # Глобальные типы
+```
 
 ---
 
-## Модуль 18: Полная интеграция пайплайна
+## Модуль 16: API маршруты (детально)
 
-### 18.1 End-to-end поток (Ассистент режим)
-
-```
-[0ms]     Пользователь начал говорить
-[10ms]    VAD детектирует голос
-[20ms]    Deepgram WebSocket: начало стриминга
-[170ms]   Deepgram: первые слова (partial results)
-[300ms]   Deepgram: финальный transcript
-[320ms]   ChromaDB RAG: top-10 контекст
-[340ms]   Сборка промпта (system + directives + RAG + history)
-[360ms]   Groq API call (streaming)
-[500ms]   Первый токен от Groq (TTFT)
-[520ms]   Cartesia TTS: первый аудио чанк (TTFB 40ms от начала TTS)
-[560ms]   Пользователь слышит первый звук
-[600ms]   Lip-sync: viseme анимация начинается
-
-Итого: ~560-600ms end-to-end
-```
-
-### 18.2 Параллельные потоки
+### 16.1 Голосовой пайплайн
 
 ```
-STT stream → partial results
-    ├──→ LLM stream (при достаточном тексте)
-    │    └──→ TTS stream (при первом токене)
-    │         └──→ Audio playback + Lip-sync
-    └──→ RAG поиск (параллельно с LLM)
+POST /api/voice/stt
+  Body: { audio: base64, provider: 'deepgram' | 'whisper' }
+  Response: { text: string, speakers?: DiarizationResult[] }
+
+POST /api/voice/llm
+  Body: { message: string, userId: string, sessionId: string, agentId?: string }
+  Response: SSE stream → { token: string } | { done: true, usage: TokenUsage }
+
+POST /api/voice/tts
+  Body: { text: string, provider: string, voiceId?: string }
+  Response: audio/mpeg stream
+
+WS /api/voice/stream
+  → Real-time голосовой пайплайн (STT → LLM → TTS в одном WebSocket)
 ```
 
-### 18.3 Fallback стратегия
+### 16.2 Агенты
 
 ```
-Deepgram fails?
-    └──→ Whisper local (500ms дополнительно)
+GET    /api/agents              → список агентов пользователя
+POST   /api/agents              → создать агента
+GET    /api/agents/:id          → детали агента
+PUT    /api/agents/:id          → обновить агента
+DELETE /api/agents/:id          → удалить агента
 
-Groq fails?
-    └──→ Next priority LLM (по настройкам)
+POST   /api/agents/:id/chat     → сообщение агенту
+POST   /api/agents/conference   → запустить конференцию
 
-Cartesia fails?
-    └──→ ElevenLabs → Google → Qwen3-TTS → Piper
-
-Сервер недоступен?
-    └──→ PWA offline mode (базовые функции)
+POST   /api/agents/:id/expertise/ingest → загрузить источник в RAG
+GET    /api/agents/:id/expertise/sources → список источников
 ```
 
-### 18.4 Мониторинг производительности
+### 16.3 Память
 
-- Каждый запрос логируется в SQLite: STT latency, LLM TTFT, TTS TTFB, total
-- P50/P95/P99 метрики в admin dashboard
-- Alerts при деградации (Telegram бот)
+```
+POST   /api/memory/search       → семантический поиск
+POST   /api/memory/store        → сохранить запись
+DELETE /api/memory/:id          → удалить запись
+GET    /api/memory/directives   → активные директивы
+DELETE /api/memory/directives/:id → деактивировать директиву
+```
 
 ---
 
-## Задачи разработки (TASK файлы)
+## Модуль 17: Тестирование и CI
 
-| Task | Название | Зависимости | Приоритет |
-|------|----------|-------------|-----------|
-| TASK_001 | Project Scaffold | — | P0 |
-| TASK_002 | SQLite Schema | TASK_001 | P0 |
-| TASK_003 | Auth System | TASK_002 | P0 |
-| TASK_004 | Particle Sphere | TASK_001 | P0 |
-| TASK_005 | Voice Pipeline: STT | TASK_003 | P0 |
-| TASK_006 | Voice Pipeline: LLM | TASK_005 | P0 |
-| TASK_007 | Voice Pipeline: TTS | TASK_006 | P0 |
-| TASK_008 | Chat Interface | TASK_007 | P0 |
-| TASK_009 | Settings Panel | TASK_008 | P1 |
-| TASK_010 | ChromaDB Memory | TASK_006 | P0 |
-| TASK_011 | Adaptive Prompt | TASK_010 | P1 |
-| TASK_012 | Lapel Diarization | TASK_005 | P1 |
-| TASK_013 | Lapel Ear Hints | TASK_012 | P2 |
-| TASK_014 | Admin Panel | TASK_003 | P1 |
-| TASK_015 | Infrastructure | TASK_001 | P1 |
-| TASK_016 | Agent System | TASK_010 | P2 |
-| TASK_017 | Telegram Bot | TASK_003 | P1 |
-| TASK_018 | Particle Avatar | TASK_004 | P2 |
-| TASK_019 | Voice Cloning | TASK_007 | P2 |
-| TASK_020 | Mafia Engine | TASK_012 | P2 |
-| TASK_021 | Obsidian Integration | TASK_010 | P2 |
-| TASK_022 | Shelestun | TASK_016 | P3 |
-| TASK_023 | Smart Home | TASK_003 | P2 |
-| TASK_024 | Token Tracking | TASK_006 | P1 |
-| TASK_025 | Full Pipeline Integration | TASK_007 | P0 |
+### 17.1 Структура тестов
+
+```
+tests/
+├── unit/
+│   ├── voice-pipeline/         # Тесты STT/LLM/TTS роутеров
+│   ├── memory/                 # Тесты ChromaDB операций
+│   └── agents/                 # Тесты агентной логики
+├── integration/
+│   ├── api.test.ts             # End-to-end API тесты
+│   └── voice-pipeline.test.ts  # Полный пайплайн
+└── e2e/
+    └── playwright/             # UI тесты (Playwright)
+```
+
+### 17.2 CI/CD
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run lint
+      - run: npm test
+  
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server
+        run: |
+          ssh $SERVER_USER@$SERVER_IP 'cd /app && git pull && npm ci && npm run build && pm2 restart voicezettel'
+```
+
+---
+
+## Модуль 18: Переменные окружения
+
+```bash
+# .env.local
+
+# ===== AUTH =====
+NEXTAUTH_URL=https://voicezettel.online
+NEXTAUTH_SECRET=<random_256bit_hex>
+GOOGLE_CLIENT_ID=<from_google_cloud_console>
+GOOGLE_CLIENT_SECRET=<from_google_cloud_console>
+
+# ===== STT =====
+DEEPGRAM_API_KEY=<key>
+
+# ===== LLM =====
+GROQ_API_KEY=<key>
+OPENAI_API_KEY=<key>
+GEMINI_API_KEY=<key>
+DEEPSEEK_API_KEY=<key>
+OLLAMA_BASE_URL=http://localhost:11434
+
+# ===== TTS =====
+CARTESIA_API_KEY=<key>
+ELEVENLABS_API_KEY=<key>
+GOOGLE_TTS_API_KEY=<key>
+YANDEX_SPEECHKIT_KEY=<key>
+QWEN3_TTS_URL=http://localhost:8880
+
+# ===== MEMORY =====
+CHROMADB_URL=http://localhost:8000
+OPENAI_EMBEDDING_KEY=<key> # для text-embedding-3-small
+
+# ===== INTEGRATIONS =====
+OBSIDIAN_API_URL=http://localhost:27123
+OBSIDIAN_API_KEY=<key>
+TELEGRAM_BOT_TOKEN=<key>
+HOME_ASSISTANT_URL=http://homeassistant.local:8123
+HOME_ASSISTANT_TOKEN=<long_lived_token>
+YANDEX_IOT_TOKEN=<oauth_token>
+GOOGLE_SHEETS_CLIENT_ID=<key>
+GOOGLE_SHEETS_CLIENT_SECRET=<key>
+
+# ===== ANALYTICS =====
+NEXT_PUBLIC_GA4_ID=G-XXXXXXXXXX
+NEXT_PUBLIC_YM_ID=XXXXXXXX
+
+# ===== BACKUP =====
+BACKBLAZE_KEY_ID=<key>
+BACKBLAZE_APPLICATION_KEY=<key>
+YANDEX_OBJECT_STORAGE_KEY=<key>
+
+# ===== MISC =====
+NODE_ENV=production
+SERVER_URL=https://voicezettel.online
+ADMIN_EMAIL=evsinanton@gmail.com
+```
+
+---
+
+## Приоритет имплементации
+
+| Этап | Что делаем | Зависимости |
+|------|-----------|-------------|
+| **Phase 1** (фундамент) | Auth + UI skeleton + голосовой пайплайн (базовый) | — |
+| **Phase 2** (память) | ChromaDB + адаптивный промпт + директивы | Phase 1 |
+| **Phase 3** (петлица) | Diarization + идентификация персон + ear hints | Phase 2 |
+| **Phase 4** (агенты) | Создание агентов + RAG + конференции | Phase 2 |
+| **Phase 5** (экосистема) | Шелестун + умный дом + перфокарта | Phase 3+4 |
+| **Phase 6** (polish) | Мафия + клонирование + визуал | Phase 3 |
+
+---
+
+## Риски и митигация
+
+| Риск | Вероятность | Влияние | Митигация |
+|------|------------|---------|----------|
+| VRAM переполнение (2×32B) | Высокая | Высокое | ModelQueue с выгрузкой/загрузкой |
+| Deepgram недоступен | Средняя | Высокое | Fallback на Whisper (<2сек) |
+| Юридические риски клонирования | Высокая | Среднее | Только локальный инференс, личное использование |
+| pyannote ложные срабатывания | Средняя | Среднее | Порог 0.7 + ручное подтверждение |
+| Obsidian API недоступен | Низкая | Низкое | Graceful degradation, кэш |
+| Утечка данных (Telegram) | Низкая | Критическое | Локальное хранение, шифрование, fail2ban |
+| Высокий latency LLM | Средняя | Высокое | Groq как primary (498 tok/s), fallback цепочки |
 
 ---
 
@@ -782,20 +1558,12 @@ Cartesia fails?
 
 | Термин | Определение |
 |--------|-------------|
-| Barge-in | Прерывание ответа ИИ пользователем |
-| ChromaDB | Векторная база данных для RAG и памяти |
+| Петлица | Режим записи разговоров с несколькими участниками |
+| Шелестун | Фоновый автономный аналитик, только для admin |
+| Перфокарта | Система геймификации жизни с авто-трекингом |
+| Barge-in | Перебивание ИИ во время его речи |
+| VAD | Voice Activity Detection — детектор голосовой активности |
 | Diarization | Разделение аудио по спикерам |
-| Embedding | Числовое представление текста/голоса (вектор) |
-| Fallback | Резервный провайдер при ошибке основного |
-| HRV | Heart Rate Variability — вариабельность ритма сердца |
-| Lapel mode | Режим петлицы — транскрибация многоголосья |
-| LLM | Large Language Model |
-| Ollama | Локальный запуск LLM моделей |
-| pyannote | Python библиотека для diarization |
-| RAG | Retrieval-Augmented Generation |
-| RVC | Retrieval-based Voice Conversion |
-| STT | Speech-to-Text |
-| TalkingHead | Open-source Three.js библиотека для lip-sync аватаров |
 | Viseme | Визуальная фонема — форма рта для звука |
 | VRAM | Video RAM — память GPU |
 | XTTS | Cross-lingual Text-to-Speech (Coqui) |
