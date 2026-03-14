@@ -1,165 +1,279 @@
-# TASK_001: Скаффолд проекта Next.js 15
+# TASK_001: Скаффолд проекта
 **Статус:** READY_FOR_ANTIGRAVITY
 **Ветка:** feature/task-001-project-scaffold
-**Спецификации:**
-- `docs/specs/SPEC_001_voicezettel_2_0_architecture.md` — главная архитектура
-- `docs/specs/SPEC_002_deployment.md` — развёртывание на новый ПК
 
-## Контекст
-Создание базового скаффолда VoiceZettel 2.0. Это фундамент для ВСЕХ 24 последующих задач. Проект должен быть готов к автономному развёртыванию через Antigravity на любом ПК (см. SPEC_002).
+## [CONTEXT_FILES]
+- `.agent/AGENT.md`
+- `docs/specs/SPEC_003_data_models.md` (секция TypeScript интерфейсы)
 
-## Задача
+НЕ ЧИТАЙ SPEC_001. НЕ ЧИТАЙ другие TASK файлы.
 
-### Шаг 1: Инициализация Next.js 15
-1. `npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"`
-2. Обновить `tsconfig.json`: strict mode, paths aliases
-3. Обновить `next.config.ts`: output standalone (для Docker деплоя)
+## [STEPS]
 
-### Шаг 2: Структура директорий
-```
-src/
-├── app/                        # Next.js App Router
-│   ├── layout.tsx              # Корневой layout
-│   ├── page.tsx                # Главная (placeholder)
-│   ├── api/                    # API routes
-│   │   └── health/route.ts     # GET /api/health — статус сервисов
-│   └── admin/                  # Админ pages
-│       └── page.tsx            # Placeholder
-├── components/                 # React компоненты
-│   ├── ui/                     # shadcn/ui
-│   ├── chat/                   # Чат (TASK_008)
-│   ├── particle-system/        # Three.js (TASK_004)
-│   └── settings/               # Настройки (TASK_009)
-├── lib/                        # Утилиты
-│   ├── config.ts               # ⭐ ЕДИНСТВЕННЫЙ источник конфигурации (все env)
-│   ├── db.ts                   # SQLite подключение (TASK_002)
-│   ├── auth.ts                 # NextAuth (TASK_003)
-│   ├── logger.ts               # Логгер (pino)
-│   └── voice-pipeline/         # Голосовой пайплайн (TASK_005-007)
-├── modules/                    # Бизнес-модули
-│   ├── agents/                 # TASK_016
-│   ├── lapel/                  # TASK_012-013
-│   ├── mafia/                  # TASK_020
-│   ├── shelestun/              # TASK_022
-│   ├── smart-home/             # TASK_023
-│   └── perfocard/              # Google Sheets
-├── stores/                     # Zustand stores
-│   └── app-store.ts            # Главный store (mode, settings)
-└── types/                      # TypeScript типы
-    ├── index.ts                # Общие типы
-    └── voice-pipeline.ts       # Типы пайплайна
+### Шаг 1: Создать ветку
+```bash
+git checkout -b feature/task-001-project-scaffold
 ```
 
-### Шаг 3: config.ts (САМЫЙ ВАЖНЫЙ ФАЙЛ)
-Создать `src/lib/config.ts` — единственный файл который читает `process.env`. Все остальные файлы импортируют конфиг отсюда. Включить:
-- Пути данных (DATA_DIR, SQLITE_DIR, CHROMADB_DIR и т.д.)
-- URL сервисов (ChromaDB, Ollama, pyannote)
-- Домен и сеть (DOMAIN, PORT, PUBLIC_URL)
-- Валидацию при старте
+### Шаг 2: Инициализировать Next.js
+Создай проект во временной папке и скопируй (в текущей папке уже есть файлы):
+```bash
+npx create-next-app@latest temp-init --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --yes
+cp -r temp-init/* .
+cp temp-init/.eslintrc.json . 2>/dev/null; cp temp-init/.gitignore . 2>/dev/null
+rm -rf temp-init
+```
 
-### Шаг 4: Docker Compose
+### Шаг 3: Установить зависимости
+```bash
+npm install zustand pino pino-pretty
+```
+Коммит: `feat(task-001): init next.js + зависимости`
+
+### Шаг 4: Создать `src/types/index.ts`
+Скопируй ВСЕ типы из SPEC_003 (секция TypeScript интерфейсы). Ничего не меняй, не добавляй.
+Коммит: `feat(task-001): типы данных из SPEC_003`
+
+### Шаг 5: Создать `src/lib/config.ts`
+```typescript
+import path from 'path';
+
+const PROJECT_ROOT = process.cwd();
+
+export const config = {
+  dataDir: path.resolve(PROJECT_ROOT, process.env.DATA_DIR || './data'),
+  sqliteDir: path.resolve(PROJECT_ROOT, process.env.SQLITE_DIR || './data/sqlite'),
+  logsDir: path.resolve(PROJECT_ROOT, process.env.LOGS_DIR || './data/logs'),
+  voicesDir: path.resolve(PROJECT_ROOT, process.env.VOICE_SAMPLES_DIR || './data/voices'),
+  chromadbUrl: process.env.CHROMADB_URL || 'http://localhost:8000',
+  ollamaHost: process.env.OLLAMA_HOST || 'http://localhost:11434',
+  pyannoteUrl: process.env.PYANNOTE_URL || 'http://localhost:8001',
+  domain: process.env.DOMAIN || 'localhost',
+  port: parseInt(process.env.PORT || '3000', 10),
+  publicUrl: process.env.PUBLIC_URL || 'http://localhost:3000',
+  useMocks: process.env.USE_MOCKS === 'true',
+  adminEmail: process.env.ADMIN_EMAIL || '',
+} as const;
+```
+Коммит: `feat(task-001): config.ts`
+
+### Шаг 6: Создать `src/lib/logger.ts`
+```typescript
+import pino from 'pino';
+
+// Логгер приложения
+export const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: process.env.NODE_ENV !== 'production'
+    ? { target: 'pino-pretty', options: { colorize: true } }
+    : undefined,
+});
+```
+Коммит: `feat(task-001): logger`
+
+### Шаг 7: Создать `src/stores/app-store.ts`
+```typescript
+'use client';
+import { create } from 'zustand';
+import type { AppMode } from '@/types';
+
+interface AppState {
+  // Текущий режим приложения
+  mode: AppMode;
+  setMode: (mode: AppMode) => void;
+  // Статус записи голоса
+  isRecording: boolean;
+  setIsRecording: (val: boolean) => void;
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  mode: 'assistant',
+  setMode: (mode) => set({ mode }),
+  isRecording: false,
+  setIsRecording: (isRecording) => set({ isRecording }),
+}));
+```
+Коммит: `feat(task-001): zustand store`
+
+### Шаг 8: Создать `src/app/api/health/route.ts`
+```typescript
+import { NextResponse } from 'next/server';
+import type { HealthStatus } from '@/types';
+
+// GET /api/health — статус сервисов
+export async function GET() {
+  const status: HealthStatus = {
+    status: 'ok',
+    services: {
+      next: true,
+      sqlite: false,  // Будет в TASK_002
+      chromadb: false, // Будет в TASK_010
+      ollama: false,   // Будет позже
+    },
+    timestamp: new Date().toISOString(),
+  };
+  return NextResponse.json(status);
+}
+```
+Коммит: `feat(task-001): health endpoint`
+
+### Шаг 9: Создать `src/app/admin/page.tsx`
+```typescript
+export default function AdminPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <h1 className="text-2xl font-bold">Админ-панель VoiceZettel 2.0</h1>
+      <p className="text-gray-500 mt-2">Будет реализована в TASK_014</p>
+    </div>
+  );
+}
+```
+Коммит: `feat(task-001): admin placeholder`
+
+### Шаг 10: Обновить `src/app/page.tsx`
+Замени содержимое дефолтной страницы Next.js на:
+```typescript
+export default function HomePage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-black text-white">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold">VoiceZettel 2.0</h1>
+        <p className="text-gray-400 mt-4">Голосовой AI-ассистент</p>
+      </div>
+    </div>
+  );
+}
+```
+Коммит: `feat(task-001): главная страница`
+
+### Шаг 11: Создать `.env.example`
+```env
+# === Режим ===
+NODE_ENV=development
+USE_MOCKS=true
+
+# === Пути данных ===
+DATA_DIR=./data
+SQLITE_DIR=./data/sqlite
+LOGS_DIR=./data/logs
+VOICE_SAMPLES_DIR=./data/voices
+
+# === Сервисы (URL) ===
+CHROMADB_URL=http://localhost:8000
+OLLAMA_HOST=http://localhost:11434
+PYANNOTE_URL=http://localhost:8001
+
+# === Домен и сеть ===
+DOMAIN=localhost
+PORT=3000
+PUBLIC_URL=http://localhost:3000
+
+# === Auth ===
+NEXTAUTH_SECRET=сгенерируй-случайную-строку
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+ADMIN_EMAIL=evsinanton@gmail.com
+
+# === STT провайдеры ===
+DEEPGRAM_API_KEY=
+
+# === LLM провайдеры ===
+GROQ_API_KEY=
+OPENAI_API_KEY=
+DEEPSEEK_API_KEY=
+GOOGLE_AI_API_KEY=
+
+# === TTS провайдеры ===
+ELEVENLABS_API_KEY=
+CARTESIA_API_KEY=
+YANDEX_API_KEY=
+
+# === Telegram ===
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_ADMIN_CHAT_ID=
+
+# === Логирование ===
+LOG_LEVEL=info
+```
+Коммит: `feat(task-001): .env.example`
+
+### Шаг 12: Создать `docker-compose.yml`
 ```yaml
-# docker-compose.yml — ChromaDB обязателен, Ollama опционален
 services:
   chromadb:
     image: chromadb/chroma:latest
-    ports: ["${CHROMADB_PORT:-8000}:8000"]
-    volumes: ["${CHROMADB_DIR:-./data/chromadb}:/chroma/chroma"]
+    ports:
+      - "${CHROMADB_PORT:-8000}:8000"
+    volumes:
+      - ./data/chromadb:/chroma/chroma
     environment:
       IS_PERSISTENT: "TRUE"
       ANONYMIZED_TELEMETRY: "FALSE"
     restart: unless-stopped
 ```
+Коммит: `feat(task-001): docker-compose`
 
-### Шаг 5: .env.example (ПОЛНЫЙ)
-Создать `.env.example` со ВСЕМИ переменными из SPEC_001. Группировать по секциям с комментариями. Включить:
-- Пути данных (DATA_DIR, SQLITE_DIR, etc.)
-- API ключи (DEEPGRAM, OPENAI, GROQ, ELEVENLABS, CARTESIA, GOOGLE, YANDEX, DEEPSEEK)
-- OAuth (GOOGLE_CLIENT_ID/SECRET, NEXTAUTH_SECRET)
-- Сервисы (CHROMADB_URL, OLLAMA_HOST, PYANNOTE_URL)
-- Домен (DOMAIN, PORT, PUBLIC_URL)
-- Telegram (TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID)
-- Admin (ADMIN_EMAIL=evsinanton@gmail.com)
-
-### Шаг 6: Скрипты
-- `scripts/bootstrap.sh` — автономное развёртывание (см. SPEC_002)
-- `scripts/dev.sh` — `docker compose up -d && npm run dev`
-
-### Шаг 7: .gitignore
-Строгий `.gitignore` — data/, .env, node_modules/, .next/
-
-### Шаг 8: Зависимости (из SPEC_001)
-```json
-{
-  "dependencies": {
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zustand": "^5.0.0",
-    "pino": "^9.0.0",
-    "pino-pretty": "^11.0.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "eslint": "^9.0.0",
-    "prettier": "^3.4.0"
-  }
-}
+### Шаг 13: Создать скрипты
+`scripts/bootstrap.sh`:
+```bash
+#!/bin/bash
+set -e
+echo "=== VoiceZettel 2.0 Bootstrap ==="
+command -v node >/dev/null 2>&1 || { echo "Нужен Node.js 20+"; exit 1; }
+if [ ! -f .env ]; then cp .env.example .env; echo "Создан .env — заполни ключи!"; fi
+mkdir -p data/{sqlite,chromadb,voices/{profiles,samples},logs}
+npm install
+echo "Готово! Запуск: npm run dev"
 ```
 
-**НЕ устанавливать** three.js, chromadb, better-sqlite3, next-auth и другие тяжёлые зависимости — они будут добавлены в соответствующих TASK.
-
-### Шаг 9: API Health Check
-`src/app/api/health/route.ts`:
-```typescript
-// GET /api/health
-// Возвращает статус всех сервисов: next, chromadb, ollama, sqlite
-// Для мониторинга и Telegram бота (TASK_017)
+`scripts/dev.sh`:
+```bash
+#!/bin/bash
+docker compose up -d 2>/dev/null || true
+npm run dev
 ```
+Коммит: `feat(task-001): скрипты bootstrap и dev`
 
-### Шаг 10: Zustand Store (базовый)
-```typescript
-// src/stores/app-store.ts
-interface AppState {
-  mode: 'assistant' | 'lapel' | 'agent';
-  isRecording: boolean;
-  // Остальные поля добавятся в следующих TASK
-}
+### Шаг 14: Обновить `.gitignore`
+Добавь в .gitignore:
 ```
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
+.env.production
+```
+Коммит: `feat(task-001): обновлён .gitignore`
 
-## Файлы для создания
-- `package.json` — зависимости
-- `tsconfig.json` — strict TypeScript
-- `next.config.ts` — output standalone
-- `tailwind.config.ts` — Tailwind
-- `docker-compose.yml` — ChromaDB (+ Ollama опционально)
-- `.env.example` — ВСЕ переменные
-- `.gitignore` — строгий
-- `src/lib/config.ts` — единственный источник конфигурации
-- `src/lib/logger.ts` — pino логгер
-- `src/app/layout.tsx` — корневой layout
-- `src/app/page.tsx` — placeholder
-- `src/app/api/health/route.ts` — health check
-- `src/stores/app-store.ts` — базовый Zustand store
-- `src/types/index.ts` — общие типы
-- `scripts/bootstrap.sh` — автономное развёртывание
-- `scripts/dev.sh` — dev запуск
+### Шаг 15: Обновить `tsconfig.json`
+Убедись что `strict: true` включён. Если нет — включи.
 
-## Acceptance Criteria
-- [ ] `npm run dev` запускается без ошибок
-- [ ] `npm run build` проходит без ошибок
-- [ ] `npm run lint` проходит без ошибок
-- [ ] TypeScript strict mode включён
-- [ ] `src/lib/config.ts` — единственное место чтения `process.env`
-- [ ] `.env.example` содержит ВСЕ переменные (30+ штук)
-- [ ] `docker-compose.yml` запускает ChromaDB (`docker compose up -d chromadb` работает)
-- [ ] `GET /api/health` возвращает JSON со статусом сервисов
-- [ ] `data/` директория в `.gitignore`
-- [ ] `scripts/bootstrap.sh` создаёт все нужные директории и готовит проект к запуску
-- [ ] Zustand store инициализирован
-- [ ] Placeholder страницы отображаются (`/` и `/admin`)
+### Шаг 16: Создать структуру пустых директорий
+```bash
+mkdir -p src/components/{ui,chat,particle-system,settings}
+mkdir -p src/modules/{agents,lapel,mafia,shelestun,smart-home,perfocard}
+mkdir -p src/lib/voice-pipeline
+mkdir -p src/lib/db
+touch src/types/voice-pipeline.ts
+```
+Коммит: `feat(task-001): структура директорий`
+
+## [VERIFICATION]
+Выполни эти команды. ВСЕ должны пройти с exit code 0:
+```bash
+npm run build
+npm run lint
+npx tsc --noEmit
+curl -s http://localhost:3000/api/health 2>/dev/null || echo "OK: dev сервер не запущен, это нормально"
+```
+Если build или lint падают — чини и повторяй.
+
+После успешной верификации:
+1. Обнови статус этого файла на `DONE_BY_ANTIGRAVITY`
+2. `git push origin feature/task-001-project-scaffold`
+3. Создай Pull Request в main
 
 ## Стек
-Next.js 15, React 19, TypeScript 5.6+, Tailwind CSS 4, shadcn/ui, Zustand 5, pino, Docker Compose, ESLint 9, Prettier
+Next.js 15, React 19, TypeScript 5.6+, Tailwind CSS, Zustand 5, pino
