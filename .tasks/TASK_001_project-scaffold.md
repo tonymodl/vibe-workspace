@@ -1,14 +1,12 @@
-# TASK_001: Скаффолд проекта Next.js 15 + портативная архитектура
+# TASK_001: Скаффолд проекта Next.js 15
 **Статус:** READY_FOR_ANTIGRAVITY
 **Ветка:** feature/task-001-project-scaffold
 **Спецификации:**
 - `docs/specs/SPEC_001_voicezettel_2_0_architecture.md` — главная архитектура
-- `docs/specs/SPEC_002_portability.md` — портативность и переносимость
+- `docs/specs/SPEC_002_deployment.md` — развёртывание на новый ПК
 
 ## Контекст
-Создание базового скаффолда VoiceZettel 2.0. Это фундамент для ВСЕХ 24 последующих задач. Проект ОБЯЗАН быть портативным — переносимым на другой компьютер/диск командой `git clone` + `cp .env` + `npm install` + `docker compose up`.
-
-**КРИТИЧНО**: Прочитай SPEC_002 перед началом работы. Портативность — не опция, а фундаментальное требование.
+Создание базового скаффолда VoiceZettel 2.0. Это фундамент для ВСЕХ 24 последующих задач. Проект должен быть готов к автономному развёртыванию через Antigravity на любом ПК (см. SPEC_002).
 
 ## Задача
 
@@ -33,7 +31,7 @@ src/
 │   ├── particle-system/        # Three.js (TASK_004)
 │   └── settings/               # Настройки (TASK_009)
 ├── lib/                        # Утилиты
-│   ├── config.ts               # ⭐ ЕДИНСТВЕННЫЙ источник конфигурации
+│   ├── config.ts               # ⭐ ЕДИНСТВЕННЫЙ источник конфигурации (все env)
 │   ├── db.ts                   # SQLite подключение (TASK_002)
 │   ├── auth.ts                 # NextAuth (TASK_003)
 │   ├── logger.ts               # Логгер (pino)
@@ -53,7 +51,11 @@ src/
 ```
 
 ### Шаг 3: config.ts (САМЫЙ ВАЖНЫЙ ФАЙЛ)
-Создать `src/lib/config.ts` по спецификации SPEC_002. Все пути через `process.env`. Валидация при старте. Ни один другой файл в проекте НЕ ДОЛЖЕН обращаться к `process.env` напрямую — только через config.
+Создать `src/lib/config.ts` — единственный файл который читает `process.env`. Все остальные файлы импортируют конфиг отсюда. Включить:
+- Пути данных (DATA_DIR, SQLITE_DIR, CHROMADB_DIR и т.д.)
+- URL сервисов (ChromaDB, Ollama, pyannote)
+- Домен и сеть (DOMAIN, PORT, PUBLIC_URL)
+- Валидацию при старте
 
 ### Шаг 4: Docker Compose
 ```yaml
@@ -70,7 +72,7 @@ services:
 ```
 
 ### Шаг 5: .env.example (ПОЛНЫЙ)
-Создать `.env.example` со ВСЕМИ переменными из SPEC_001 + SPEC_002. Группировать по секциям с комментариями. Включить:
+Создать `.env.example` со ВСЕМИ переменными из SPEC_001. Группировать по секциям с комментариями. Включить:
 - Пути данных (DATA_DIR, SQLITE_DIR, etc.)
 - API ключи (DEEPGRAM, OPENAI, GROQ, ELEVENLABS, CARTESIA, GOOGLE, YANDEX, DEEPSEEK)
 - OAuth (GOOGLE_CLIENT_ID/SECRET, NEXTAUTH_SECRET)
@@ -80,12 +82,11 @@ services:
 - Admin (ADMIN_EMAIL=evsinanton@gmail.com)
 
 ### Шаг 6: Скрипты
-- `scripts/setup.sh` — первый запуск (см. SPEC_002)
-- `scripts/migrate-server.sh` — инструкция переноса
+- `scripts/bootstrap.sh` — автономное развёртывание (см. SPEC_002)
 - `scripts/dev.sh` — `docker compose up -d && npm run dev`
 
 ### Шаг 7: .gitignore
-Строгий `.gitignore` по SPEC_002 — data/, .env, node_modules/, .next/
+Строгий `.gitignore` — data/, .env, node_modules/, .next/
 
 ### Шаг 8: Зависимости (из SPEC_001)
 ```json
@@ -135,7 +136,7 @@ interface AppState {
 - `tailwind.config.ts` — Tailwind
 - `docker-compose.yml` — ChromaDB (+ Ollama опционально)
 - `.env.example` — ВСЕ переменные
-- `.gitignore` — строгий, по SPEC_002
+- `.gitignore` — строгий
 - `src/lib/config.ts` — единственный источник конфигурации
 - `src/lib/logger.ts` — pino логгер
 - `src/app/layout.tsx` — корневой layout
@@ -143,12 +144,11 @@ interface AppState {
 - `src/app/api/health/route.ts` — health check
 - `src/stores/app-store.ts` — базовый Zustand store
 - `src/types/index.ts` — общие типы
-- `scripts/setup.sh` — первый запуск
-- `scripts/migrate-server.sh` — перенос сервера
+- `scripts/bootstrap.sh` — автономное развёртывание
 - `scripts/dev.sh` — dev запуск
 
 ## Acceptance Criteria
-- [ ] `npm run dev` запускается без ошибок на ЧИСТОЙ машине
+- [ ] `npm run dev` запускается без ошибок
 - [ ] `npm run build` проходит без ошибок
 - [ ] `npm run lint` проходит без ошибок
 - [ ] TypeScript strict mode включён
@@ -157,8 +157,7 @@ interface AppState {
 - [ ] `docker-compose.yml` запускает ChromaDB (`docker compose up -d chromadb` работает)
 - [ ] `GET /api/health` возвращает JSON со статусом сервисов
 - [ ] `data/` директория в `.gitignore`
-- [ ] `scripts/setup.sh` создаёт все нужные директории
-- [ ] Нет ни одного абсолютного пути в коде (grep -r "/home\|/mnt\|/Users\|C:\\\\" src/ возвращает пусто)
+- [ ] `scripts/bootstrap.sh` создаёт все нужные директории и готовит проект к запуску
 - [ ] Zustand store инициализирован
 - [ ] Placeholder страницы отображаются (`/` и `/admin`)
 
